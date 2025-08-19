@@ -1,45 +1,55 @@
 name: Trivy Container Image Scan - Latest
 
 on:
-    push:
-#      branches: [ "master" ]
-      paths-ignore:
-        - './mkdocs.yml'
-        - './docs/**'
-    pull_request:
-      branches: [ "master" ]
-      paths-ignore:
-        - './mkdocs.yml'
-        - './docs/**'
-    workflow_dispatch:
+  push:
+    branches: [ "master" ]
+    paths-ignore:
+      - '/.github/docs.yml'
+      - '/Docs/**'
+  pull_request:
+    branches: [ "master" ]
+    paths-ignore:
+      - '/.github/docs.yml'
+      - '/Docs/**'
+  workflow_dispatch:
 
 jobs:
   build:
-    name: Build
     runs-on: ubuntu-24.04
+    # Erforderliche Berechtigungen für das Pushen von Paketen und das Hochladen von Sicherheitsereignissen
+    permissions:
+      packages: write # Erforderlich für ghcr.io push
+      contents: read # Erforderlich für checkout
+      security-events: write # Erforderlich für SARIF Upload
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v3
 
-## Build and scan Latest image
+      ## Build and scan Latest image
       - name: Build an image from Dockerfile - latest
-        uses: docker/build-push-action@v6.18.0
+        uses: docker/build-push-action@v6.10.0 # Oder die neueste Version, falls verfügbar
         with:
           context: .
           file: ./Dockerfile
-          push: false
-          tags: ${{ secrets.DOCKER_USERNAME }}/clamav-alpine:latest
+          push: true
+          # Korrigierter Tag für GitHub Container Registry (GHCR)
+          tags: ghcr.io/${{ github.repository }}:latest,ghcr.io/${{ github.repository }}:${{ github.sha }}
 
       - name: Run Trivy vulnerability scanner - latest
-        uses: aquasecurity/trivy-action@0.32.0
+        uses: aquasecurity/trivy-action@0.52.0 # Oder die neueste Version, falls verfügbar
         with:
-          image-ref: 'docker.io/${{ secrets.DOCKER_USERNAME }}/clamav-alpine:${{ github.sha }}'
+          # Korrigierte Image-Referenz, um das GHCR-Image zu verwenden
+          image-ref: ghcr.io/${{ github.repository }}:${{ github.sha }}
           format: 'sarif'
           output: 'trivy-results.sarif'
+          # Hier könnten Sie auch 'ignore-unfixed: true' oder 'severity: HIGH,CRITICAL' hinzufügen,
+          # um die Ergebnisse zu filtern, falls Sie zu viele irrelevante Warnungen erhalten.
 
-## Upload to Security tab
+      ## Upload to Security tab
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
         with:
           sarif_file: 'trivy-results.sarif'
+        # Ausführen, auch wenn vorherige Schritte fehlschlagen, um zumindest Teilergebnisse hochzuladen
+        if: always()
