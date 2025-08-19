@@ -50,9 +50,20 @@ elif [ "$MODE" = "scan" ]; then
 
     if command -v pv >/dev/null 2>&1; then
         echo "[clam-av] Found $FILE_COUNT files, scanning with progress bar..."
+
+        TMP_FIFO=$(mktemp -u)
+        mkfifo "$TMP_FIFO"
+
+        # clamscan liest aus der Pipe
+        clamscan --file-list="$TMP_FIFO" "$@" &
+        CLAM_PID=$!
+
+        # pv schickt Dateien in die Pipe
         find "$SCANDIR" -type f \
-            | pv -l -s "$FILE_COUNT" -p -t -e -N files 2>&1 \
-            | clamscan --file-list=- "$@"
+            | pv -l -s "$FILE_COUNT" -p -t -e -N files > "$TMP_FIFO"
+
+        wait $CLAM_PID
+        rm -f "$TMP_FIFO"
     else
         echo "[clam-av] pv not installed, running without progress bar..."
         clamscan -r "$SCANDIR" "$@"
