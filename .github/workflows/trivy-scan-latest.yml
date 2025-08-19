@@ -37,7 +37,7 @@ jobs:
           tags: ghcr.io/${{ github.repository }}:latest,ghcr.io/${{ github.repository }}:${{ github.sha }}
 
       - name: Run Trivy vulnerability scanner - latest
-        uses: aquasecurity/trivy-action@0.52.0 # Oder die neueste Version, falls verfügbar
+        uses: aquasecurity/trivy-action@0.32.0 # Oder die neueste Version, falls verfügbar
         with:
           # Korrigierte Image-Referenz, um das GHCR-Image zu verwenden
           image-ref: ghcr.io/${{ github.repository }}:${{ github.sha }}
