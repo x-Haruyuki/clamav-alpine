@@ -28,7 +28,7 @@ jobs:
           context: .
           file: ./Dockerfile
           push: false
-          tags: ${{ secrets.DOCKER_USERNAME }}/clamav-alpine:${{ github.sha }} 
+          tags: ${{ secrets.DOCKER_USERNAME }}/clamav-alpine:latest
 
       - name: Run Trivy vulnerability scanner - latest
         uses: aquasecurity/trivy-action@0.32.0
