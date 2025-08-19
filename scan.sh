@@ -10,7 +10,6 @@ echo ""
 set +e
 freshclam
 FRESHCLAM_EXIT=$?
-
 MODE="${MODE:-scan}"
 
 set -e
@@ -40,14 +39,28 @@ if [ "$MODE" = "server" ]; then
 
     echo "[clam-av] Starting in server mode..."
     exec clamd -c /etc/clamav/clamd.conf
+
 elif [ "$MODE" = "scan" ]; then
     clamscan -V
     echo ""
     echo -e "Scanning $SCANDIR"
     echo ""
-    clamscan -r $SCANDIR $@
+
+    FILE_COUNT=$(find "$SCANDIR" -type f | wc -l)
+
+    if command -v pv >/dev/null 2>&1; then
+        echo "[clam-av] Found $FILE_COUNT files, scanning with progress bar..."
+        find "$SCANDIR" -type f \
+            | pv -l -s "$FILE_COUNT" -p -t -e -N files 2>&1 \
+            | clamscan --file-list=- "$@"
+    else
+        echo "[clam-av] pv not installed, running without progress bar..."
+        clamscan -r "$SCANDIR" "$@"
+    fi
+
     echo ""
     echo -e "$( date -I'seconds' ) ClamAV scanning finished"
+
 else
     echo -e "MODE not selected. Use MODE=scan or MODE=server"
 fi
